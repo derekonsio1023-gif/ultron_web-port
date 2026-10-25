@@ -45,6 +45,12 @@
             50% { opacity: 0.05; }
         }
 
+        /* === BLOQUEO DE RATÓN: ocultar cursor del sistema === */
+        html, body, canvas, #gm4html5_div_id {
+            cursor: none !important;
+        }
+        /* ================================================== */
+
         canvas {
             display: block;
             border: none;
@@ -126,7 +132,79 @@
   };
 </script>
 
+<!-- ==================== BLOQUEO DE RATÓN ==================== -->
+<script>
+(function () {
+    let canvasEl = null;
+    let pointerLocked = false;
 
+    function requestLock() {
+        if (!canvasEl || pointerLocked) return;
+        const req = canvasEl.requestPointerLock
+                 || canvasEl.mozRequestPointerLock
+                 || canvasEl.webkitRequestPointerLock;
+        if (req) {
+            try { req.call(canvasEl); } catch (e) { /* ignorar */ }
+        }
+    }
+
+    function setup() {
+        canvasEl = document.getElementById('canvas');
+        if (!canvasEl) return;
+
+        // 1) Intentar bloquear el puntero al hacer clic en el canvas
+        canvasEl.addEventListener('click', requestLock);
+
+        // 2) Re-bloquear si el usuario sale del lock (Escape, Alt+Tab, etc.)
+        document.addEventListener('pointerlockchange', () => {
+            pointerLocked = (document.pointerLockElement === canvasEl ||
+                             document.mozPointerLockElement === canvasEl ||
+                             document.webkitPointerLockElement === canvasEl);
+            // El CSS ya oculta el cursor; aquí solo mantenemos el estado.
+        });
+
+        document.addEventListener('mozpointerlockchange', () => {
+            pointerLocked = (document.pointerLockElement === canvasEl ||
+                             document.mozPointerLockElement === canvasEl);
+        });
+        document.addEventListener('webkitpointerlockchange', () => {
+            pointerLocked = (document.pointerLockElement === canvasEl ||
+                             document.webkitPointerLockElement === canvasEl);
+        });
+
+        document.addEventListener('pointerlockerror', () => {
+            console.warn('[HotlineMiami] Pointer lock no disponible; se mantiene solo el cursor oculto.');
+        });
+
+        // 3) Bloquear menú contextual (clic derecho) y selección de texto
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('selectstart', e => e.preventDefault());
+        document.addEventListener('dragstart',  e => e.preventDefault());
+
+        // 4) Re-bloquear automáticamente cuando la ventana recibe foco
+        window.addEventListener('focus', () => {
+            // Solo si ya se había bloqueado antes (evita bloquear al cargar)
+            if (pointerLocked === false && document.pointerLockElement === null && window.__hm_everLocked) {
+                requestLock();
+            }
+        });
+
+        // Marca que el usuario ya interactuó (para el auto-relock del focus)
+        canvasEl.addEventListener('click', () => { window.__hm_everLocked = true; });
+
+        // 5) Asegurar que el canvas tenga foco de teclado
+        canvasEl.setAttribute('tabindex', '0');
+        canvasEl.addEventListener('mousedown', () => canvasEl.focus());
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+    } else {
+        setup();
+    }
+})();
+</script>
+<!-- ========================================================== -->
 
     <div class="gm4html5_div_class" id="gm4html5_div_id">
         <canvas id="canvas" width="1920" height="1080">

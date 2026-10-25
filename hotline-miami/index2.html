@@ -45,11 +45,11 @@
             50% { opacity: 0.05; }
         }
 
-        /* === BLOQUEO DE RATÓN: ocultar cursor del sistema === */
-        html, body, canvas, #gm4html5_div_id {
+        /* === BLOQUEO DE CURSOR: ocultar el cursor del sistema === */
+        html, body, canvas, #gm4html5_div_id, .gm4html5_div_class {
             cursor: none !important;
         }
-        /* ================================================== */
+        /* ====================================================== */
 
         canvas {
             display: block;
@@ -132,79 +132,32 @@
   };
 </script>
 
-<!-- ==================== BLOQUEO DE RATÓN ==================== -->
+<!-- ==================== OCULTAR CURSOR + FOCO DE TECLADO ==================== -->
 <script>
 (function () {
-    let canvasEl = null;
-    let pointerLocked = false;
+    // 1) El cursor del sistema se oculta por CSS (cursor: none).
+    //    NO usamos Pointer Lock: rompe el input del motor GameMaker
+    //    (el personaje se queda mirando al cursor pero no se mueve con WASD).
 
-    function requestLock() {
-        if (!canvasEl || pointerLocked) return;
-        const req = canvasEl.requestPointerLock
-                 || canvasEl.mozRequestPointerLock
-                 || canvasEl.webkitRequestPointerLock;
-        if (req) {
-            try { req.call(canvasEl); } catch (e) { /* ignorar */ }
-        }
+    // 2) Asegurar que la ventana tenga foco para que las teclas lleguen al juego.
+    function focusGame() {
+        try { window.focus(); } catch (e) {}
     }
+    // En fase de captura para ejecutarse antes que el handler del juego
+    document.addEventListener('mousedown', focusGame, true);
+    document.addEventListener('click',     focusGame, true);
+    document.addEventListener('keydown',   focusGame, true);
 
-    function setup() {
-        canvasEl = document.getElementById('canvas');
-        if (!canvasEl) return;
+    // 3) Bloquear menú contextual (clic derecho), selección y arrastre
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+    document.addEventListener('dragstart',   e => e.preventDefault());
 
-        // 1) Intentar bloquear el puntero al hacer clic en el canvas
-        canvasEl.addEventListener('click', requestLock);
-
-        // 2) Re-bloquear si el usuario sale del lock (Escape, Alt+Tab, etc.)
-        document.addEventListener('pointerlockchange', () => {
-            pointerLocked = (document.pointerLockElement === canvasEl ||
-                             document.mozPointerLockElement === canvasEl ||
-                             document.webkitPointerLockElement === canvasEl);
-            // El CSS ya oculta el cursor; aquí solo mantenemos el estado.
-        });
-
-        document.addEventListener('mozpointerlockchange', () => {
-            pointerLocked = (document.pointerLockElement === canvasEl ||
-                             document.mozPointerLockElement === canvasEl);
-        });
-        document.addEventListener('webkitpointerlockchange', () => {
-            pointerLocked = (document.pointerLockElement === canvasEl ||
-                             document.webkitPointerLockElement === canvasEl);
-        });
-
-        document.addEventListener('pointerlockerror', () => {
-            console.warn('[HotlineMiami] Pointer lock no disponible; se mantiene solo el cursor oculto.');
-        });
-
-        // 3) Bloquear menú contextual (clic derecho) y selección de texto
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('selectstart', e => e.preventDefault());
-        document.addEventListener('dragstart',  e => e.preventDefault());
-
-        // 4) Re-bloquear automáticamente cuando la ventana recibe foco
-        window.addEventListener('focus', () => {
-            // Solo si ya se había bloqueado antes (evita bloquear al cargar)
-            if (pointerLocked === false && document.pointerLockElement === null && window.__hm_everLocked) {
-                requestLock();
-            }
-        });
-
-        // Marca que el usuario ya interactuó (para el auto-relock del focus)
-        canvasEl.addEventListener('click', () => { window.__hm_everLocked = true; });
-
-        // 5) Asegurar que el canvas tenga foco de teclado
-        canvasEl.setAttribute('tabindex', '0');
-        canvasEl.addEventListener('mousedown', () => canvasEl.focus());
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setup);
-    } else {
-        setup();
-    }
+    // 4) Evitar que la rueda del ratón provoque scroll
+    document.addEventListener('wheel', e => e.preventDefault(), { passive: false });
 })();
 </script>
-<!-- ========================================================== -->
+<!-- ======================================================================= -->
 
     <div class="gm4html5_div_class" id="gm4html5_div_id">
         <canvas id="canvas" width="1920" height="1080">
